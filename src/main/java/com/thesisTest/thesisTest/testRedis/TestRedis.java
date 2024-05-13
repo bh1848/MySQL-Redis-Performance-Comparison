@@ -17,7 +17,7 @@ public class TestRedis implements CommandLineRunner {
     @Autowired
     private RedisTemplate<String, Integer> redisTemplate;
 
-    private static final int COUNT = 10000;
+    private static final int COUNT = 10000; // 전체 테스트 횟수
     private static final int BATCH_SIZE = 1000; // 배치 크기를 1000으로 설정
 
     public static void main(String[] args) {
@@ -37,21 +37,25 @@ public class TestRedis implements CommandLineRunner {
 
             for (int i = 1; i <= BATCH_SIZE; i++) {
                 int keyIndex = batch * BATCH_SIZE + i;
+                String key = "user:" + keyIndex;
 
-                // 회원가입 - 데이터 삽입
+                // 회원가입을 위한 데이터 삽입 쿼리. keyIndex를 key로 사용하여 정수값을 저장합니다.
                 long insertStart = System.currentTimeMillis();
-                redisTemplate.opsForValue().set("user:" + keyIndex, keyIndex);
-                redisInsertTimes.add(System.currentTimeMillis() - insertStart);
+                redisTemplate.opsForValue().set(key, keyIndex);
+                long insertTime = System.currentTimeMillis() - insertStart;
+                redisInsertTimes.add(insertTime);
 
-                // 로그인 - 데이터 조회
+                // 로그인을 위한 데이터 조회 쿼리. 저장된 keyIndex 값을 조회합니다.
                 long fetchStart = System.currentTimeMillis();
-                redisTemplate.opsForValue().get("user:" + keyIndex);
-                redisFetchTimes.add(System.currentTimeMillis() - fetchStart);
+                Integer fetchedValue = redisTemplate.opsForValue().get(key);
+                long fetchTime = System.currentTimeMillis() - fetchStart;
+                redisFetchTimes.add(fetchTime);
 
-                // 회원 탈퇴 - 데이터 삭제
+                // 회원 탈퇴를 위한 데이터 삭제 쿼리. key를 사용하여 데이터를 삭제합니다.
                 long deleteStart = System.currentTimeMillis();
-                redisTemplate.delete("user:" + keyIndex);
-                redisDeleteTimes.add(System.currentTimeMillis() - deleteStart);
+                redisTemplate.delete(key);
+                long deleteTime = System.currentTimeMillis() - deleteStart;
+                redisDeleteTimes.add(deleteTime);
             }
 
             // 각 배치의 평균 시간을 계산하고 저장
@@ -60,11 +64,14 @@ public class TestRedis implements CommandLineRunner {
             batchDeleteAverages.add(average(redisDeleteTimes));
         }
 
-        // 각 배치의 평균 시간을 로그로 출력
-        for (int i = 0; i < batchInsertAverages.size(); i++) {
-            log.info("배치 {} 평균 삽입 시간: {}ms", i + 1, batchInsertAverages.get(i));
-            log.info("배치 {} 평균 조회 시간: {}ms", i + 1, batchFetchAverages.get(i));
-            log.info("배치 {} 평균 삭제 시간: {}ms", i + 1, batchDeleteAverages.get(i));
+        // 결과 로깅
+        logBatchResults(batchInsertAverages, batchFetchAverages, batchDeleteAverages);
+    }
+
+    private void logBatchResults(List<Double> insertAverages, List<Double> fetchAverages, List<Double> deleteAverages) {
+        for (int i = 0; i < insertAverages.size(); i++) {
+            log.info("배치 {} 평균 삽입 시간: {}ms, 평균 조회 시간: {}ms, 평균 삭제 시간: {}ms",
+                    i + 1, insertAverages.get(i), fetchAverages.get(i), deleteAverages.get(i));
         }
     }
 

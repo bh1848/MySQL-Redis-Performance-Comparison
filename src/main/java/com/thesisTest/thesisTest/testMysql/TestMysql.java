@@ -37,36 +37,39 @@ public class TestMysql implements CommandLineRunner {
             for (int i = 1; i <= BATCH_SIZE; i++) {
                 int keyIndex = batch * BATCH_SIZE + i;
 
-                // 회원가입 - 데이터 삽입
+                // 데이터 삽입: 각 회원 정보 생성 및 저장
                 long insertStart = System.currentTimeMillis();
                 TestData savedData = testDataRepository.save(new TestData(keyIndex, "TestData" + keyIndex));
                 long insertEnd = System.currentTimeMillis();
                 insertTimes.add(insertEnd - insertStart);
 
-                // 로그인 - 데이터 조회
+                // 데이터 조회: 저장된 회원 정보 검색
                 long fetchStart = System.currentTimeMillis();
                 testDataRepository.findById(savedData.getId());
                 long fetchEnd = System.currentTimeMillis();
                 fetchTimes.add(fetchEnd - fetchStart);
 
-                // 회원 탈퇴 - 데이터 삭제
+                // 데이터 삭제: 저장된 회원 정보 삭제
                 long deleteStart = System.currentTimeMillis();
                 testDataRepository.deleteById(savedData.getId());
                 long deleteEnd = System.currentTimeMillis();
                 deleteTimes.add(deleteEnd - deleteStart);
             }
 
-            // 각 배치의 평균 시간을 계산하고 저장
+            // 평균 시간 계산 및 저장
             batchInsertAverages.add(average(insertTimes));
             batchFetchAverages.add(average(fetchTimes));
             batchDeleteAverages.add(average(deleteTimes));
         }
 
-        // 각 배치의 평균 시간을 로그로 출력
-        for (int i = 0; i < batchInsertAverages.size(); i++) {
-            log.info("배치 {} 평균 삽입 시간: {}ms", i + 1, batchInsertAverages.get(i));
-            log.info("배치 {} 평균 조회 시간: {}ms", i + 1, batchFetchAverages.get(i));
-            log.info("배치 {} 평균 삭제 시간: {}ms", i + 1, batchDeleteAverages.get(i));
+        // 결과 로깅
+        logBatchResults(batchInsertAverages, batchFetchAverages, batchDeleteAverages);
+    }
+
+    private void logBatchResults(List<Double> insertAverages, List<Double> fetchAverages, List<Double> deleteAverages) {
+        for (int i = 0; i < insertAverages.size(); i++) {
+            log.info("Batch {} - 평균 삽입 시간: {}ms, 평균 조회 시간: {}ms, 평균 삭제 시간: {}ms",
+                    i + 1, insertAverages.get(i), fetchAverages.get(i), deleteAverages.get(i));
         }
     }
 

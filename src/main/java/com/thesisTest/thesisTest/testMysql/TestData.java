@@ -15,13 +15,16 @@ import javax.persistence.Id;
 @Entity // JPA 엔티티 선언
 public class TestData {
 
+    @Getter
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
+    private int keyIndex;
+    private String name;
 
-    private int dataMysql;
-    private int value;
-
-    public TestData(int keyIndex, String s) {
+    public TestData(int keyIndex, String name) {
+        this.keyIndex = keyIndex;
+        this.name = name;
     }
+
 }
