@@ -39,19 +39,19 @@ public class TestRedis implements CommandLineRunner {
                 int keyIndex = batch * BATCH_SIZE + i;
                 String key = "user:" + keyIndex;
 
-                // 회원가입을 위한 데이터 삽입 쿼리. keyIndex를 key로 사용하여 정수값을 저장합니다.
+                // 데이터 삽입: 각 회원 정보 생성 및 저장. keyIndex를 key로 사용하여 정수값을 저장합니다.
                 long insertStart = System.currentTimeMillis();
                 redisTemplate.opsForValue().set(key, keyIndex);
                 long insertTime = System.currentTimeMillis() - insertStart;
                 redisInsertTimes.add(insertTime);
 
-                // 로그인을 위한 데이터 조회 쿼리. 저장된 keyIndex 값을 조회합니다.
+                // 데이터 조회: 저장된 회원 정보 검색. 저장된 keyIndex 값을 조회합니다.
                 long fetchStart = System.currentTimeMillis();
-                Integer fetchedValue = redisTemplate.opsForValue().get(key);
+                redisTemplate.opsForValue().get(key);
                 long fetchTime = System.currentTimeMillis() - fetchStart;
                 redisFetchTimes.add(fetchTime);
 
-                // 회원 탈퇴를 위한 데이터 삭제 쿼리. key를 사용하여 데이터를 삭제합니다.
+                // 데이터 삭제: 저장된 회원 정보 삭제. key를 사용하여 데이터를 삭제합니다.
                 long deleteStart = System.currentTimeMillis();
                 redisTemplate.delete(key);
                 long deleteTime = System.currentTimeMillis() - deleteStart;
