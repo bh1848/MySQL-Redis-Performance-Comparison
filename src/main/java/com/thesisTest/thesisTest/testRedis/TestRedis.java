@@ -14,11 +14,10 @@ import java.util.List;
 @SpringBootApplication
 public class TestRedis implements CommandLineRunner {
 
+    private static final int COUNT = 10000; //총 작업 수
+    private static final int BATCH_SIZE = 1000; //배치 당 작업 수
     @Autowired
     private RedisTemplate<String, Integer> redisTemplate;
-
-    private static final int COUNT = 10000; // 전체 테스트 횟수
-    private static final int BATCH_SIZE = 1000; // 배치 크기를 1000으로 설정
 
     public static void main(String[] args) {
         SpringApplication.run(TestRedis.class, args);
@@ -30,42 +29,51 @@ public class TestRedis implements CommandLineRunner {
         List<Double> batchFetchAverages = new ArrayList<>();
         List<Double> batchDeleteAverages = new ArrayList<>();
 
+        //배치 작업 반복 수행
         for (int batch = 0; batch < COUNT / BATCH_SIZE; batch++) {
-            List<Long> redisInsertTimes = new ArrayList<>();
-            List<Long> redisFetchTimes = new ArrayList<>();
-            List<Long> redisDeleteTimes = new ArrayList<>();
+            log.info("배치 작동중 {} of {}", batch + 1, COUNT / BATCH_SIZE);
+            List<Long> insertTimes = performBatchOperations(batch, "INSERT"); //삽입 실행 및 시간 측정
+            List<Long> fetchTimes = performBatchOperations(batch, "SELECT"); //조회 실행 및 시간 측정
+            List<Long> deleteTimes = performBatchOperations(batch, "DELETE"); //삭제 실행 및 시간 측정
 
-            for (int i = 1; i <= BATCH_SIZE; i++) {
-                int keyIndex = batch * BATCH_SIZE + i;
-                String key = "user:" + keyIndex;
+            batchInsertAverages.add(average(insertTimes));
+            batchFetchAverages.add(average(fetchTimes));
+            batchDeleteAverages.add(average(deleteTimes));
 
-                // 데이터 삽입: 각 회원 정보 생성 및 저장. keyIndex를 key로 사용하여 정수값을 저장합니다.
-                long insertStart = System.currentTimeMillis();
-                redisTemplate.opsForValue().set(key, keyIndex);
-                long insertTime = System.currentTimeMillis() - insertStart;
-                redisInsertTimes.add(insertTime);
-
-                // 데이터 조회: 저장된 회원 정보 검색. 저장된 keyIndex 값을 조회합니다.
-                long fetchStart = System.currentTimeMillis();
-                redisTemplate.opsForValue().get(key);
-                long fetchTime = System.currentTimeMillis() - fetchStart;
-                redisFetchTimes.add(fetchTime);
-
-                // 데이터 삭제: 저장된 회원 정보 삭제. key를 사용하여 데이터를 삭제합니다.
-                long deleteStart = System.currentTimeMillis();
-                redisTemplate.delete(key);
-                long deleteTime = System.currentTimeMillis() - deleteStart;
-                redisDeleteTimes.add(deleteTime);
-            }
-
-            // 각 배치의 평균 시간을 계산하고 저장
-            batchInsertAverages.add(average(redisInsertTimes));
-            batchFetchAverages.add(average(redisFetchTimes));
-            batchDeleteAverages.add(average(redisDeleteTimes));
+            log.info("배치 실행 종료 {}.", batch + 1);
         }
 
-        // 결과 로깅
         logBatchResults(batchInsertAverages, batchFetchAverages, batchDeleteAverages);
+        log.info("모든 배치 종료.");
+    }
+
+    private List<Long> performBatchOperations(int batch, String operationType) {
+        List<Long> operationTimes = new ArrayList<>(); //작업 시간을 저장할 리스트
+        for (int i = 1; i <= BATCH_SIZE; i++) {
+            int keyIndex = batch * BATCH_SIZE + i; //키 인덱스 계산
+            String key = "user:" + keyIndex; //Redis 키 생성
+            switch (operationType) {
+                case "INSERT":
+                    operationTimes.add(executeRedisCommand(() -> redisTemplate.opsForValue().set(key, keyIndex))); //삽입 명령어
+                    break;
+                case "SELECT":
+                    operationTimes.add(executeRedisCommand(() -> redisTemplate.opsForValue().get(key))); //조회 명령어
+                    break;
+                case "DELETE":
+                    operationTimes.add(executeRedisCommand(() -> redisTemplate.delete(key))); //삭제 명령어
+                    break;
+            }
+        }
+        return operationTimes;
+    }
+    
+    //배치 당 시간 계산
+    private long executeRedisCommand(Runnable command) {
+        long startTime = System.currentTimeMillis();
+        command.run();
+        long duration = System.currentTimeMillis() - startTime;
+        log.debug("Executed command in {} ms", duration);
+        return duration;
     }
 
     private void logBatchResults(List<Double> insertAverages, List<Double> fetchAverages, List<Double> deleteAverages) {
@@ -74,7 +82,8 @@ public class TestRedis implements CommandLineRunner {
                     i + 1, insertAverages.get(i), fetchAverages.get(i), deleteAverages.get(i));
         }
     }
-
+    
+    //평균 시간 계산
     private double average(List<Long> times) {
         return times.stream().mapToLong(Long::longValue).average().orElse(0);
     }
